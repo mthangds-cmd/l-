@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sổ Tay Phố — Blog cá nhân</title>
+<style>
+  :root{
+    --paper: #FBF9F4;
+    --paper-line: #E3DFD3;
+    --ink: #2B2A28;
+    --ink-soft: #5B5850;
+    --margin-red: #B24A3C;
+    --mustard: #D9A441;
+    --sage: #74846A;
+    --card-shadow: rgba(43,42,40,0.12);
+    --font-display: 'Courier New', 'Special Elite', monospace;
+    --font-body: Georgia, 'Times New Roman', serif;
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  body{
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent, transparent 35px,
+        var(--paper-line) 35px, var(--paper-line) 36px
+      ),
+      var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+
+  /* ---------- Header ---------- */
+  header{
+    position: relative;
+    padding: 56px 24px 40px 72px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  header::before{
+    content: "";
+    position: absolute;
+    left: 40px; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--margin-red);
+  }
+
+  header::after{
+    content: "";
+    position: absolute;
+    left: 34px; top: 0; bottom: 0;
+    width: 6px;
+    background:
+      radial-gradient(circle, var(--paper) 2px, transparent 2.2px) repeat-y;
+    background-size: 6px 40px;
+    background-position: 0 20px;
+  }
+
+  .site-title{
+    font-family: var(--font-display);
+    font-size: clamp(28px, 5vw, 44px);
+    letter-spacing: -0.5px;
+    display: inline-block;
+    transform: rotate(-0.6deg);
+  }
+
+  .site-title .stamp{
+    display:inline-block;
+    background: var(--mustard);
+    color: var(--paper);
+    font-size: 13px;
+    padding: 3px 8px;
+    margin-left: 12px;
+    transform: rotate(3deg);
+    vertical-align: middle;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+
+  .site-tagline{
+    margin-top: 10px;
+    color: var(--ink-soft);
+    font-style: italic;
+    max-width: 46ch;
+  }
+
+  /* ---------- Nav / filter tabs ---------- */
+  nav{
+    padding: 20px 24px 20px 72px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-bottom: 1px dashed var(--paper-line);
+  }
+
+  .tab{
+    font-family: var(--font-display);
+    font-size: 13px;
+    padding: 7px 14px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: transform .15s ease, background .15s ease, color .15s ease;
+  }
+
+  .tab:hover{ transform: translateY(-2px); }
+
+  .tab.active{
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* ---------- Grid of posts ---------- */
+  main{
+    padding: 40px 24px 80px 72px;
+  }
+
+  .grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 28px;
+  }
+
+  .card{
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--card-shadow);
+    padding: 20px;
+    position: relative;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+
+  .card:nth-child(3n+1){ transform: rotate(-0.5deg); }
+  .card:nth-child(3n+2){ transform: rotate(0.4deg); }
+  .card:nth-child(3n){ transform: rotate(-0.2deg); }
+
+  .card:hover{
+    transform: rotate(0deg) translateY(-4px);
+    box-shadow: 6px 8px 0 var(--card-shadow);
+  }
+
+  .card .tape{
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 70px; height: 22px;
+    background: rgba(217,164,65,0.55);
+    border: 1px solid rgba(217,164,65,0.8);
+  }
+
+  .card .tag{
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--sage);
+    border: 1px solid var(--sage);
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .card h2{
+    font-family: var(--font-body);
+    font-size: 20px;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .card p{
+    color: var(--ink-soft);
+    font-size: 14.5px;
+    margin-bottom: 14px;
+  }
+
+  .card .meta{
+    font-family: var(--font-display);
+    font-size: 11px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px dashed var(--paper-line);
+    padding-top: 10px;
+  }
+
+  .card .read-more{
+    font-weight: bold;
+    color: var(--margin-red);
+  }
+
+  .card .read-more::after{
+    content: " →";
+  }
+
+  /* ---------- Footer ---------- */
+  footer{
+    padding: 24px 24px 24px 72px;
+    border-top: 2px solid var(--ink);
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (max-width: 640px){
+    header, nav, main, footer{ padding-left: 28px; }
+    header::before{ left: 14px; }
+    header::after{ left: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="site-title">Sổ Tay Phố <span class="stamp">bản ghi #04</span></div>
+  <p class="site-tagline">Những mẩu quan sát nhỏ trên đường đi — sách đang đọc, quán cà phê mới, và vài suy nghĩ giữa tuần.</p>
+</header>
+
+<nav id="tabs">
+  <button class="tab active" data-filter="all">Tất cả</button>
+  <button class="tab" data-filter="doi-song">Đời sống</button>
+  <button class="tab" data-filter="sach">Sách</button>
+  <button class="tab" data-filter="du-lich">Du lịch</button>
+  <button class="tab" data-filter="am-thuc">Ẩm thực</button>
+</nav>
+
+<main>
+  <div class="grid" id="grid">
+
+    <article class="card" data-cat="doi-song">
+      <div class="tape"></div>
+      <span class="tag">Đời sống</span>
+      <h2>Buổi sáng chậm và một tách trà nguội</h2>
+      <p>Ghi lại thói quen dậy sớm ba tuần gần đây — không phải để năng suất hơn, mà chỉ để có mười lăm phút không thuộc về ai.</p>
+      <div class="meta"><span>12.08.2026</span><span class="read-more">Đọc tiếp</span></div>
+    </article>
+
+    <article class="card" data-cat="sach">
+      <div class="tape"></div>
+      <span class="tag">Sách</span>
+      <h2>Ba cuốn sách mỏng nên đọc lại mỗi năm</h2>
+      <p>Không phải sách nào cũng cần đọc một lần rồi cất đi. Đây là ba cuốn mình quay lại đều đặn, và lý do vì sao.</p>
+      <div class="meta"><span>05.08.2026</span><span class="read-more">Đọc tiếp</span></div>
+    </article>
+
+    <article class="card" data-cat="du-lich">
+      <div class="tape"></div>
+      <span class="tag">Du lịch</span>
+      <h2>Một buổi chiều ở Hải Phòng, không lịch trình</h2>
+      <p>Đi lang thang không bản đồ đôi khi cho mình nhiều hơn một chuyến đi có kế hoạch chi tiết. Vài ghi chú từ chuyến đi gần nhất.</p>
+      <div class="meta"><span>28.07.2026</span><span class="read-more">Đọc tiếp</span></div>
+    </article>
+
+    <article class="card" data-cat="am-thuc">
+      <div class="tape"></div>
+      <span class="tag">Ẩm thực</span>
+      <h2>Quán bún nhỏ đầu ngõ và người chủ ít nói</h2>
+      <p>Không phải quán nào ngon cũng cần ồn ào. Một ghi chú ngắn về nơi mình hay ghé mỗi khi cần một bữa ăn yên tĩnh.</p>
+      <div class="meta"><span>19.07.2026</span><span class="read-more">Đọc tiếp</span></div>
+    </article>
+
+    <article class="card" data-cat="doi-song">
+      <div class="tape"></div>
+      <span class="tag">Đời sống</span>
+      <h2>Học cách nói "để sau" với chính mình</h2>
+      <p>Một vài suy nghĩ về việc buông bỏ áp lực phải làm mọi thứ ngay lập tức, và tại sao "chưa vội" đôi khi là câu trả lời đúng.</p>
+      <div class="meta"><span>10.07.2026</span><span class="read-more">Đọc tiếp</span></div>
+    </article>
+
+    <article class="card" data-cat="sach">
+      <div class="tape"></div>
+      <span class="tag">Sách</span>
+      <h2>Đọc chậm: một thử nghiệm kéo dài một tháng</h2>
+      <p>Mình thử giới hạn bản thân chỉ đọc 10 trang mỗi ngày, không hơn. Kết quả bất ngờ hơn mình nghĩ.</p>
+      <div class="meta"><span>02.07.2026</span><span class="read-more">Đọc tiếp</span></div>
+    </article>
+
+  </div>
+</main>
+
+<footer>
+  <span>© 2026 Sổ Tay Phố — viết bằng tay, gõ lại bằng máy.</span>
+  <span>Trang 1 / còn tiếp</span>
+</footer>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const cards = document.querySelectorAll('.card');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const filter = tab.dataset.filter;
+      cards.forEach(card => {
+        const show = filter === 'all' || card.dataset.cat === filter;
+        card.style.display = show ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
