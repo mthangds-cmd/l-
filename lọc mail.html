@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Lọc & Tìm Kiếm Email Chuyên Nghiệp</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SheetJS (XLSX) để đọc và xuất file Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .dropzone-active {
+            border-color: #4f46e5 !important;
+            background-color: #eef2ff !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+
+    <!-- Thông báo Toast (Thay thế hoàn toàn alert) -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/15 p-3 rounded-xl backdrop-blur-sm">
+                    <i class="fa-solid fa-envelope-circle-check text-2xl text-indigo-100"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Tool Lọc & Tìm Kiếm Email Pro</h1>
+                    <p class="text-indigo-100 text-xs sm:text-sm">Trích xuất tự động • Nhập/Xuất Excel, CSV, TXT, JSON • Phân loại tên miền</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 self-end sm:self-auto">
+                <button onclick="loadSampleData()" class="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-medium rounded-lg backdrop-blur-sm transition flex items-center gap-2 border border-white/20">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Tải dữ liệu mẫu
+                </button>
+                <button onclick="resetAll()" class="px-3.5 py-2 bg-rose-500/80 hover:bg-rose-600 text-white text-xs sm:text-sm font-medium rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i> Làm mới
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        
+        <!-- Thống kê tổng quan (Stats Cards) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Tìm thấy ban đầu</p>
+                    <p id="statTotalRaw" class="text-2xl font-bold text-slate-800">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Kết quả hợp lệ</p>
+                    <p id="statTotalFiltered" class="text-2xl font-bold text-emerald-600">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-filter-circle-xmark"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Trùng / Đã loại bỏ</p>
+                    <p id="statTotalRemoved" class="text-2xl font-bold text-rose-600">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-globe"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Số tên miền (Domain)</p>
+                    <p id="statTotalDomains" class="text-2xl font-bold text-amber-600">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bố cục 2 cột chính -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- CỘT TRÁI: NHẬP DỮ LIỆU & BỘ LỌC (5 phần) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <!-- Khu vực 1: Nhập File & Văn bản -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-base">
+                            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs flex items-center justify-center font-bold">1</span>
+                            Nhập Dữ Liệu (File hoặc Văn bản)
+                        </h2>
+                        <!-- Chế độ nhập file -->
+                        <div class="flex items-center gap-2 text-xs bg-slate-100 p-1 rounded-lg">
+                            <label class="cursor-pointer px-2 py-1 rounded-md transition has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:font-semibold text-slate-700">
+                                <input type="radio" name="importMode" value="append" checked class="hidden"> Nối thêm
+                            </label>
+                            <label class="cursor-pointer px-2 py-1 rounded-md transition has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:font-semibold text-slate-700">
+                                <input type="radio" name="importMode" value="replace" class="hidden"> Ghi đè
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Vùng Kéo Thả File (Drag & Drop) -->
+                    <div id="dropZone" onclick="document.getElementById('fileInput').click()"
+                        class="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50/70 hover:bg-indigo-50/40 rounded-xl p-4 text-center cursor-pointer transition duration-200 mb-3 group">
+                        <input type="file" id="fileInput" multiple accept=".txt,.csv,.xlsx,.xls,.json,.html,.htm,.log,.xml" class="hidden" onchange="handleFileSelect(event)">
+                        <div class="text-indigo-500 group-hover:scale-110 transition-transform duration-200 mb-1">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-700">
+                            Kéo thả file vào đây hoặc <span class="text-indigo-600 underline">Chọn file từ máy</span>
+                        </p>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            Hỗ trợ chọn nhiều file: .TXT, .CSV, .XLSX, .XLS, .JSON, .HTML, .LOG
+                        </p>
+                    </div>
+
+                    <!-- Danh sách các file đã tải lên -->
+                    <div id="importedFilesList" class="hidden flex-wrap gap-1.5 mb-3"></div>
+
+                    <!-- Ô nhập văn bản trực tiếp -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="rawInput" class="text-xs font-medium text-slate-600">Dữ liệu văn bản thô (Có thể dán trực tiếp):</label>
+                            <button onclick="clearInput()" class="text-xs text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1">
+                                <i class="fa-regular fa-trash-can"></i> Xóa ô nhập
+                            </button>
+                        </div>
+                        <textarea id="rawInput" rows="7"
+                            class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-xs sm:text-sm font-mono bg-slate-50/50 transition"
+                            placeholder="Dán văn bản lộn xộn, mã nguồn web, hoặc danh sách khách hàng vào đây...&#10;Ví dụ:&#10;1. Nguyễn Văn A - nguyenvana@gmail.com - 0901234567&#10;2. Phòng Kinh Doanh: sales@congtyabc.vn; support@yahoo.com"
+                            oninput="processEmails()"></textarea>
+                    </div>
+                </div>
+
+                <!-- Khu vực 2: Tùy chọn Làm sạch & Bộ lọc -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2 text-base">
+                        <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs flex items-center justify-center font-bold">2</span>
+                        Làm Sạch & Bộ Lọc Tìm Kiếm
+                    </h2>
+
+                    <!-- Checkboxes làm sạch -->
+                    <div class="grid grid-cols-2 gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 text-xs sm:text-sm">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="deduplicate" checked onchange="processEmails()" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+                            <span class="font-medium text-slate-700">Xóa email trùng</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="lowercase" checked onchange="processEmails()" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+                            <span class="font-medium text-slate-700">Chuyển chữ thường</span>
+                        </label>
+                        <div class="col-span-2 pt-2 border-t border-slate-200 flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-600"><i class="fa-solid fa-arrow-down-a-z mr-1"></i>Sắp xếp thứ tự:</span>
+                            <select id="sortOrder" onchange="processEmails()" class="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="none">Giữ nguyên thứ tự gốc</option>
+                                <option value="az" selected>Theo bảng chữ cái (A → Z)</option>
+                                <option value="za">Ngược bảng chữ cái (Z → A)</option>
+                                <option value="domain">Theo tên miền (@domain)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tìm kiếm & Lọc sâu -->
+                    <div class="space-y-3">
+                        <!-- Tìm kiếm từ khóa -->
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 block mb-1">
+                                <i class="fa-solid fa-magnifying-glass text-indigo-500 mr-1"></i>Tìm kiếm Email (Có chứa từ khóa):
+                            </label>
+                            <div class="relative">
+                                <input type="text" id="searchKeyword" oninput="processEmails()" placeholder="Nhập tên, số, hoặc cụm từ cần tìm..." 
+                                    class="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <button onclick="document.getElementById('searchKeyword').value=''; processEmails();" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Lọc theo tên miền & Loại trừ -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">
+                                    <i class="fa-solid fa-at text-amber-500 mr-1"></i>Lọc theo Tên miền:
+                                </label>
+                                <select id="domainFilter" onchange="processEmails()" class="w-full p-2 border border-slate-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="ALL">Tất cả tên miền (0)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">
+                                    <i class="fa-solid fa-ban text-rose-500 mr-1"></i>Loại trừ từ khóa (Cách bởi dấu phẩy):
+                                </label>
+                                <input type="text" id="excludeKeyword" oninput="processEmails()" placeholder="VD: spam, test, noreply..." 
+                                    class="w-full p-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Thẻ chọn nhanh Domain (Quick Pills) -->
+                        <div id="domainPillsContainer" class="hidden pt-1">
+                            <span class="text-[11px] text-slate-400 block mb-1.5">Chọn nhanh tên miền phổ biến:</span>
+                            <div id="domainPills" class="flex flex-wrap gap-1.5"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- CỘT PHẢI: KẾT QUẢ & XUẤT FILE (7 phần) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <!-- Khu vực 3: Hiển thị Kết quả -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                    
+                    <!-- Thanh công cụ kết quả -->
+                    <div class="flex flex-wrap justify-between items-center gap-3 mb-3 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2 text-base">
+                                <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center font-bold">3</span>
+                                Danh Sách Kết Quả
+                            </h2>
+                            <!-- Chuyển đổi chế độ xem: Văn bản / Bảng -->
+                            <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-medium ml-2">
+                                <button id="btnViewText" onclick="switchView('text')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-align-left"></i> Văn bản
+                                </button>
+                                <button id="btnViewTable" onclick="switchView('table')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-table"></i> Bảng chi tiết
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tuỳ chọn dấu ngăn cách (chỉ hiện ở chế độ Văn bản) -->
+                        <div id="separatorControl" class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500">Ngăn cách:</span>
+                            <select id="separator" onchange="renderOutput()" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="\n">Xuống dòng (Enter)</option>
+                                <option value=", ">Dấu phẩy (, )</option>
+                                <option value="; ">Chấm phẩy (; )</option>
+                                <option value=" | ">Gạch đứng ( | )</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Chế độ 1: Khung Văn bản (Text View) -->
+                    <div id="textViewContainer" class="flex-1 flex flex-col">
+                        <textarea id="outputResult" readonly rows="13"
+                            class="w-full flex-1 p-3.5 bg-slate-900 text-emerald-400 font-mono text-xs sm:text-sm rounded-xl border border-slate-800 outline-none leading-relaxed"
+                            placeholder="Danh sách email sau khi trích xuất và lọc sẽ hiển thị tại đây..."></textarea>
+                    </div>
+
+                    <!-- Chế độ 2: Khung Bảng (Table View) -->
+                    <div id="tableViewContainer" class="hidden flex-1 flex-col border border-slate-200 rounded-xl overflow-hidden">
+                        <div class="overflow-y-auto max-h-[340px]">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+                                    <tr>
+                                        <th class="py-2.5 px-3 w-12 text-center">#</th>
+                                        <th class="py-2.5 px-3">Địa chỉ Email</th>
+                                        <th class="py-2.5 px-3 hidden sm:table-cell">Tài khoản (User)</th>
+                                        <th class="py-2.5 px-3">Tên miền (Domain)</th>
+                                        <th class="py-2.5 px-3 w-20 text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="emailTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm font-mono">
+                                    <!-- Dữ liệu render bằng JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Nút Copy nhanh -->
+                    <div class="mt-3 flex justify-between items-center pt-2">
+                        <span id="statusText" class="text-xs text-slate-500 italic">Sẵn sàng xử lý dữ liệu...</span>
+                        <button onclick="copyResult()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs sm:text-sm rounded-xl transition flex items-center gap-2 border border-indigo-200">
+                            <i class="fa-regular fa-copy"></i> Sao chép tất cả kết quả
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Khu vực 4: Xuất File (Export File) -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2 text-base mb-3">
+                        <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold">4</span>
+                        Xuất File Về Máy (Export)
+                    </h2>
+
+                    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center mb-4">
+                        <div class="flex-1">
+                            <label class="text-xs text-slate-500 block mb-1">Đặt tên file tải về (không cần gõ đuôi file):</label>
+                            <div class="relative">
+                                <i class="fa-regular fa-file-lines absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                                <input type="text" id="exportFileName" value="danh-sach-email-da-loc" 
+                                    class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Các nút định dạng xuất file -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button onclick="exportFile('txt')" class="p-2.5 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-medium text-xs sm:text-sm transition flex flex-col items-center justify-center gap-1 shadow-sm">
+                            <i class="fa-regular fa-file-lines text-lg"></i>
+                            <span>Xuất .TXT</span>
+                            <span class="text-[10px] text-slate-300 font-normal">Văn bản thuần</span>
+                        </button>
+
+                        <button onclick="exportFile('csv')" class="p-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-medium text-xs sm:text-sm transition flex flex-col items-center justify-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-file-csv text-lg"></i>
+                            <span>Xuất .CSV</span>
+                            <span class="text-[10px] text-teal-100 font-normal">Chuẩn UTF-8 Excel</span>
+                        </button>
+
+                        <button onclick="exportFile('xlsx')" class="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-xs sm:text-sm transition flex flex-col items-center justify-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-file-excel text-lg"></i>
+                            <span>Xuất .XLSX</span>
+                            <span class="text-[10px] text-emerald-100 font-normal">Bảng tính Excel</span>
+                        </button>
+
+                        <button onclick="exportFile('json')" class="p-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium text-xs sm:text-sm transition flex flex-col items-center justify-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-file-code text-lg"></i>
+                            <span>Xuất .JSON</span>
+                            <span class="text-[10px] text-amber-100 font-normal">Dữ liệu cấu trúc</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JavaScript Xử Lý Logic -->
+    <script>
+        let currentFilteredEmails = [];
+        let manuallyRemovedEmails = new Set();
+        let currentViewMode = 'text'; // 'text' hoặc 'table'
+        let uploadedFilesMeta = [];
+
+        // Khởi tạo sự kiện Kéo & Thả (Drag & Drop)
+        const dropZone = document.getElementById('dropZone');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dropzone-active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dropzone-active'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Xử lý khi chọn file qua nút bấm
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+            // Reset input để có thể chọn lại cùng 1 file nếu muốn
+            event.target.value = '';
+        }
+
+        // Đọc danh sách các file được tải lên (Hỗ trợ TXT, CSV, JSON, HTML, XLSX, XLS)
+        async function handleFiles(files) {
+            if (!files || files.length === 0) return;
+
+            const importMode = document.querySelector('input[name="importMode"]:checked').value;
+            const rawInputEl = document.getElementById('rawInput');
+
+            if (importMode === 'replace') {
+                rawInputEl.value = '';
+                uploadedFilesMeta = [];
+                manuallyRemovedEmails.clear();
+            }
+
+            let combinedNewText = '';
+            let successCount = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const ext = file.name.split('.').pop().toLowerCase();
+
+                try {
+                    if (ext === 'xlsx' || ext === 'xls') {
+                        const excelText = await readExcelFile(file);
+                        combinedNewText += '\n' + excelText;
+                    } else {
+                        const plainText = await readTextFile(file);
+                        combinedNewText += '\n' + plainText;
+                    }
+                    uploadedFilesMeta.push({ name: file.name, size: formatBytes(file.size) });
+                    successCount++;
+                } catch (err) {
+                    console.error('Lỗi đọc file:', file.name, err);
+                    showToast(`Không thể đọc file "${file.name}"`, 'error');
+                }
+            }
+
+            if (successCount > 0) {
+                rawInputEl.value = (rawInputEl.value ? rawInputEl.value + '\n' : '') + combinedNewText.trim();
+                renderUploadedFileBadges();
+                processEmails();
+                showToast(`Đã tải lên thành công ${successCount} file!`, 'success');
+            }
+        }
+
+        // Đọc file văn bản (.txt, .csv, .json, .html...)
+        function readTextFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
+        // Đọc file Excel (.xlsx, .xls) bằng SheetJS
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        let allSheetsText = '';
+                        workbook.SheetNames.forEach(sheetName => {
+                            const worksheet = workbook.Sheets[sheetName];
+                            const csv = XLSX.utils.sheet_to_csv(worksheet);
+                            allSheetsText += csv + '\n';
+                        });
+                        resolve(allSheetsText);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Hiển thị danh sách thẻ file đã nhập
+        function renderUploadedFileBadges() {
+            const container = document.getElementById('importedFilesList');
+            if (uploadedFilesMeta.length === 0) {
+                container.classList.add('hidden');
+                container.classList.remove('flex');
+                container.innerHTML = '';
+                return;
+            }
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+            container.innerHTML = uploadedFilesMeta.map((f, idx) => `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <i class="fa-regular fa-file-check"></i>
+                    <span class="truncate max-w-[150px]">${escapeHtml(f.name)}</span>
+                    <span class="text-[10px] text-indigo-400">(${f.size})</span>
+                </span>
+            `).join('');
+        }
+
+        // Hàm chính: Trích xuất, Làm sạch và Lọc Email
+        function processEmails() {
+            const rawText = document.getElementById('rawInput').value;
+            const isDedup = document.getElementById('deduplicate').checked;
+            const isLower = document.getElementById('lowercase').checked;
+            const sortOrder = document.getElementById('sortOrder').value;
+            const searchKw = document.getElementById('searchKeyword').value.toLowerCase().trim();
+            const excludeKw = document.getElementById('excludeKeyword').value.toLowerCase().trim();
+            const domainSelect = document.getElementById('domainFilter');
+            const selectedDomain = domainSelect.value;
+
+            // 1. Trích xuất email bằng biểu thức chính quy (Regex)
+            const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+            let rawMatches = rawText.match(emailRegex) || [];
+            const totalRawCount = rawMatches.length;
+
+            // 2. Chuyển chữ thường
+            let processed = isLower ? rawMatches.map(e => e.toLowerCase()) : [...rawMatches];
+
+            // 3. Xóa trùng lặp
+            if (isDedup) {
+                processed = [...new Set(processed)];
+            }
+
+            // Loại bỏ các email người dùng đã bấm xóa thủ công trên bảng
+            processed = processed.filter(e => !manuallyRemovedEmails.has(e.toLowerCase()));
+
+            // 4. Thống kê tên miền (Domain)
+            const domainsCount = {};
+            processed.forEach(email => {
+                const parts = email.split('@');
+                if (parts.length === 2) {
+                    const domain = parts[1].toLowerCase();
+                    domainsCount[domain] = (domainsCount[domain] || 0) + 1;
+                }
+            });
+
+            // Sắp xếp domain theo số lượng giảm dần
+            const sortedDomains = Object.keys(domainsCount).sort((a, b) => domainsCount[b] - domainsCount[a]);
+
+            // Cập nhật Dropdown Domain
+            const currentDomainSignature = sortedDomains.map(d => `${d}:${domainsCount[d]}`).join('|');
+            if (domainSelect.dataset.signature !== currentDomainSignature) {
+                domainSelect.innerHTML = `<option value="ALL">Tất cả tên miền (${processed.length})</option>`;
+                sortedDomains.forEach(d => {
+                    const option = document.createElement('option');
+                    option.value = d;
+                    option.text = `@${d} (${domainsCount[d]})`;
+                    if (d === selectedDomain) option.selected = true;
+                    domainSelect.appendChild(option);
+                });
+                domainSelect.dataset.signature = currentDomainSignature;
+                renderDomainPills(sortedDomains, domainsCount, domainSelect.value);
+            } else {
+                updateDomainPillActiveState(domainSelect.value);
+            }
+
+            // 5. Áp dụng Bộ lọc (Domain, Từ khóa tìm kiếm, Từ khóa loại trừ)
+            const activeDomain = domainSelect.value;
+            const excludeList = excludeKw ? excludeKw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+            currentFilteredEmails = processed.filter(email => {
+                const emailLower = email.toLowerCase();
+                const domain = emailLower.split('@')[1];
+
+                if (activeDomain !== 'ALL' && domain !== activeDomain) return false;
+                if (searchKw && !emailLower.includes(searchKw)) return false;
+
+                if (excludeList.length > 0) {
+                    for (let badWord of excludeList) {
+                        if (emailLower.includes(badWord)) return false;
+                    }
+                }
+                return true;
+            });
+
+            // 6. Sắp xếp kết quả
+            if (sortOrder === 'az') {
+                currentFilteredEmails.sort((a, b) => a.localeCompare(b));
+            } else if (sortOrder === 'za') {
+                currentFilteredEmails.sort((a, b) => b.localeCompare(a));
+            } else if (sortOrder === 'domain') {
+                currentFilteredEmails.sort((a, b) => {
+                    const domA = a.split('@')[1].toLowerCase();
+                    const domB = b.split('@')[1].toLowerCase();
+                    return domA.localeCompare(domB) || a.localeCompare(b);
+                });
+            }
+
+            // 7. Cập nhật các thẻ thống kê (Stats)
+            const removedCount = totalRawCount - currentFilteredEmails.length;
+            document.getElementById('statTotalRaw').innerText = totalRawCount.toLocaleString('vi-VN');
+            document.getElementById('statTotalFiltered').innerText = currentFilteredEmails.length.toLocaleString('vi-VN');
+            document.getElementById('statTotalRemoved').innerText = (removedCount > 0 ? removedCount : 0).toLocaleString('vi-VN');
+            document.getElementById('statTotalDomains').innerText = sortedDomains.length.toLocaleString('vi-VN');
+
+            document.getElementById('statusText').innerText = 
+                `Đang hiển thị ${currentFilteredEmails.length} email hợp lệ (từ ${totalRawCount} kết quả thô).`;
+
+            renderOutput();
+        }
+
+        // Hiển thị các nút chọn nhanh tên miền (Domain Pills)
+        function renderDomainPills(sortedDomains, domainsCount, activeDomain) {
+            const container = document.getElementById('domainPillsContainer');
+            const pillsBox = document.getElementById('domainPills');
+
+            if (sortedDomains.length <= 1) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            const topDomains = sortedDomains.slice(0, 6); // Lấy tối đa 6 domain phổ biến nhất
+
+            let html = `
+                <button onclick="selectDomainPill('ALL')" data-domain="ALL"
+                    class="domain-pill px-2.5 py-1 rounded-lg text-xs font-medium border transition ${activeDomain === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}">
+                    Tất cả
+                </button>
+            `;
+
+            topDomains.forEach(d => {
+                const isActive = activeDomain === d;
+                html += `
+                    <button onclick="selectDomainPill('${d}')" data-domain="${d}"
+                        class="domain-pill px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isActive ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}">
+                        @${d} <span class="opacity-75">(${domainsCount[d]})</span>
+                    </button>
+                `;
+            });
+
+            pillsBox.innerHTML = html;
+        }
+
+        function updateDomainPillActiveState(activeDomain) {
+            document.querySelectorAll('.domain-pill').forEach(btn => {
+                if (btn.dataset.domain === activeDomain) {
+                    btn.className = 'domain-pill px-2.5 py-1 rounded-lg text-xs font-medium border transition bg-indigo-600 text-white border-indigo-600';
+                } else {
+                    btn.className = 'domain-pill px-2.5 py-1 rounded-lg text-xs font-medium border transition bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200';
+                }
+            });
+        }
+
+        function selectDomainPill(domain) {
+            const select = document.getElementById('domainFilter');
+            select.value = domain;
+            processEmails();
+        }
+
+        // Render kết quả ra màn hình (Văn bản & Bảng)
+        function renderOutput() {
+            // 1. Render vào khung Textarea
+            const sepValue = document.getElementById('separator').value;
+            const separator = sepValue === '\\n' ? '\n' : sepValue;
+            document.getElementById('outputResult').value = currentFilteredEmails.join(separator);
+
+            // 2. Render vào Bảng chi tiết
+            const tbody = document.getElementById('emailTableBody');
+            if (currentFilteredEmails.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400 font-sans">
+                            <i class="fa-regular fa-folder-open text-2xl mb-1 block"></i>
+                            Chưa có dữ liệu email nào thỏa mãn điều kiện lọc.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Giới hạn hiển thị trực tiếp 500 dòng trên bảng để mượt trình duyệt
+            const displayLimit = 500;
+            const sliceEmails = currentFilteredEmails.slice(0, displayLimit);
+
+            tbody.innerHTML = sliceEmails.map((email, idx) => {
+                const [user, domain] = email.split('@');
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2 px-3 text-center text-slate-400 text-xs">${idx + 1}</td>
+                        <td class="py-2 px-3 font-medium text-slate-800">${escapeHtml(email)}</td>
+                        <td class="py-2 px-3 text-slate-500 hidden sm:table-cell">${escapeHtml(user)}</td>
+                        <td class="py-2 px-3">
+                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs">@${escapeHtml(domain)}</span>
+                        </td>
+                        <td class="py-2 px-3 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="copySingleEmail('${escapeHtml(email)}')" title="Sao chép email này" class="text-slate-400 hover:text-indigo-600 transition">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                                <button onclick="removeSingleEmail('${escapeHtml(email)}')" title="Loại bỏ email này" class="text-slate-400 hover:text-rose-600 transition">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (currentFilteredEmails.length > displayLimit) {
+                tbody.innerHTML += `
+                    <tr>
+                        <td colspan="5" class="py-2.5 text-center text-xs text-slate-500 bg-slate-50 font-sans italic">
+                            Đang hiển thị ${displayLimit} / ${currentFilteredEmails.length} email trên bảng. Khi Xuất File hoặc Copy sẽ lấy đầy đủ 100%.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Chuyển đổi giữa chế độ xem Văn bản (Text) và Bảng (Table)
+        function switchView(mode) {
+            currentViewMode = mode;
+            const textContainer = document.getElementById('textViewContainer');
+            const tableContainer = document.getElementById('tableViewContainer');
+            const btnText = document.getElementById('btnViewText');
+            const btnTable = document.getElementById('btnViewTable');
+            const sepControl = document.getElementById('separatorControl');
+
+            if (mode === 'text') {
+                textContainer.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+                sepControl.classList.remove('hidden');
+                btnText.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition flex items-center gap-1.5';
+                btnTable.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+            } else {
+                textContainer.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+                tableContainer.classList.add('flex');
+                sepControl.classList.add('hidden');
+                btnTable.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition flex items-center gap-1.5';
+                btnText.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+            }
+        }
+
+        // Sao chép 1 email trong bảng
+        function copySingleEmail(email) {
+            copyTextToClipboard(email);
+            showToast(`Đã sao chép: ${email}`, 'success');
+        }
+
+        // Xóa 1 email cụ thể khỏi danh sách kết quả
+        function removeSingleEmail(email) {
+            manuallyRemovedEmails.add(email.toLowerCase());
+            processEmails();
+            showToast(`Đã loại bỏ: ${email}`, 'info');
+        }
+
+        // Sao chép toàn bộ kết quả
+        function copyResult() {
+            if (currentFilteredEmails.length === 0) {
+                showToast('Chưa có dữ liệu email nào để sao chép!', 'warning');
+                return;
+            }
+            const textToCopy = document.getElementById('outputResult').value;
+            copyTextToClipboard(textToCopy);
+            showToast(`Đã sao chép ${currentFilteredEmails.length} email vào bộ nhớ tạm!`, 'success');
+        }
+
+        // Hàm hỗ trợ copy tương thích mọi trình duyệt & iframe
+        function copyTextToClipboard(text) {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+        }
+
+        // XUẤT FILE ĐA ĐỊNH DẠNG (TXT, CSV, XLSX, JSON)
+        function exportFile(type) {
+            if (currentFilteredEmails.length === 0) {
+                showToast('Không có dữ liệu email để xuất file!', 'warning');
+                return;
+            }
+
+            let baseName = document.getElementById('exportFileName').value.trim() || 'danh-sach-email';
+            // Loại bỏ các ký tự đặc biệt không hợp lệ trong tên file
+            baseName = baseName.replace(/[^a-zA-Z0-9-_àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳỵỷỹýÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲỴỶỸÝ\s]/g, '');
+
+            if (type === 'txt') {
+                const sepValue = document.getElementById('separator').value;
+                const separator = sepValue === '\\n' ? '\r\n' : sepValue;
+                const content = currentFilteredEmails.join(separator);
+                triggerDownload(content, `${baseName}.txt`, 'text/plain;charset=utf-8;');
+                showToast(`Đã tải xuống file ${baseName}.txt`, 'success');
+            } 
+            else if (type === 'csv') {
+                // Thêm BOM (\uFEFF) để Microsoft Excel đọc chuẩn font Tiếng Việt UTF-8
+                let csvContent = '\uFEFFSTT,Địa chỉ Email,Tài khoản (Username),Tên miền (Domain)\r\n';
+                currentFilteredEmails.forEach((email, idx) => {
+                    const [user, domain] = email.split('@');
+                    csvContent += `${idx + 1},"${email}","${user}","${domain}"\r\n`;
+                });
+                triggerDownload(csvContent, `${baseName}.csv`, 'text/csv;charset=utf-8;');
+                showToast(`Đã tải xuống file ${baseName}.csv`, 'success');
+            } 
+            else if (type === 'xlsx') {
+                // Tạo file Excel (.xlsx) thực sự bằng SheetJS
+                const rows = currentFilteredEmails.map((email, idx) => {
+                    const [user, domain] = email.split('@');
+                    return {
+                        'STT': idx + 1,
+                        'Địa chỉ Email': email,
+                        'Tài khoản (User)': user,
+                        'Tên miền (Domain)': domain
+                    };
+                });
+
+                const worksheet = XLSX.utils.json_to_sheet(rows);
+                // Căn chỉnh độ rộng cột Excel cho đẹp
+                worksheet['!cols'] = [
+                    { wch: 8 },  // Cột STT
+                    { wch: 35 }, // Cột Email
+                    { wch: 22 }, // Cột User
+                    { wch: 22 }  // Cột Domain
+                ];
+
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'DanhSachEmail');
+                XLSX.writeFile(workbook, `${baseName}.xlsx`);
+                showToast(`Đã xuất file Excel ${baseName}.xlsx`, 'success');
+            } 
+            else if (type === 'json') {
+                const jsonData = currentFilteredEmails.map((email, idx) => {
+                    const [user, domain] = email.split('@');
+                    return {
+                        id: idx + 1,
+                        email: email,
+                        username: user,
+                        domain: domain
+                    };
+                });
+                const jsonString = JSON.stringify(jsonData, null, 2);
+                triggerDownload(jsonString, `${baseName}.json`, 'application/json;charset=utf-8;');
+                showToast(`Đã tải xuống file ${baseName}.json`, 'success');
+            }
+        }
+
+        function triggerDownload(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Tải dữ liệu mẫu để người dùng thử nghiệm ngay
+        function loadSampleData() {
+            const sampleText = `=== DANH SÁCH KHÁCH HÀNG & ĐỐI TÁC MẪU ===
+1. Ban Giám Đốc:
+- Anh Minh (CEO): minh.nguyen@techviet.vn | ĐT: 0901.234.567
+- Chị Lan (CFO): lan.tran@techviet.vn, lan.tran88@gmail.com
+
+2. Danh sách đăng ký nhận bản tin (Newsletter):
+khachhang01@gmail.com; khachhang02@yahoo.com; le.hoang.nam@outlook.com
+NguyenVanA@GMAIL.COM (Email viết hoa bị trùng với nguyenvana@gmail.com)
+nguyenvana@gmail.com
+tran_thi_b@icloud.com
+pham.huong@fpt.edu.vn
+hoang.duc@vinacorp.com.vn
+
+3. Các email hệ thống hoặc email rác (Thử lọc bằng ô Loại trừ):
+admin@tempmail.com
+test_account@example.com
+noreply@system-notification.org
+spam_bot@trashmail.net`;
+
+            document.getElementById('rawInput').value = sampleText;
+            manuallyRemovedEmails.clear();
+            uploadedFilesMeta = [{ name: 'du-lieu-mau.txt', size: '680 B' }];
+            renderUploadedFileBadges();
+            processEmails();
+            showToast('Đã nạp dữ liệu mẫu thành công!', 'info');
+        }
+
+        function clearInput() {
+            document.getElementById('rawInput').value = '';
+            uploadedFilesMeta = [];
+            manuallyRemovedEmails.clear();
+            renderUploadedFileBadges();
+            processEmails();
+            showToast('Đã xóa vùng nhập dữ liệu.', 'info');
+        }
+
+        function resetAll() {
+            document.getElementById('rawInput').value = '';
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('excludeKeyword').value = '';
+            document.getElementById('deduplicate').checked = true;
+            document.getElementById('lowercase').checked = true;
+            document.getElementById('sortOrder').value = 'az';
+            document.getElementById('domainFilter').value = 'ALL';
+            uploadedFilesMeta = [];
+            manuallyRemovedEmails.clear();
+            renderUploadedFileBadges();
+            processEmails();
+            showToast('Đã đặt lại toàn bộ công cụ về mặc định.', 'info');
+        }
+
+        // Hệ thống thông báo Toast hiện đại
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const styles = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                warning: 'bg-amber-500 text-white',
+                info: 'bg-slate-800 text-white'
+            };
+
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-xmark',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            toast.className = `${styles[type]} px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs sm:text-sm font-medium pointer-events-auto transition-all duration-300 transform translate-y-0 opacity-100`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type]} text-base"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-5');
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
