@@ -53,8 +53,7 @@ DEFAULT_REDIRECT_URI = "https://ranking.fconline.garena.vn/login/callback"
 PROFILE_URL = "https://ranking.fconline.garena.vn/api/user/profile"
 
 # Proxy API
-PROXY_API_URL = "https://proxyxoay.shop/api/get.php"
-
+PROXY_API_URL = "https://topproxy.vn/proxyxoay/apigetkeyxoay.php"
 # ============================================================
 # XTEA / Proto / TCP (giữ nguyên logic từ code gốc)
 # ============================================================
